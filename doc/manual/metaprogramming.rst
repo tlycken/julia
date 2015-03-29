@@ -869,3 +869,102 @@ entirely in Julia. You can read their source and see precisely what they
 do — and all they do is construct expression objects to be inserted into
 your program's syntax tree.
 
+Staged functions
+----------------
+
+Sometimes, generating or manipulating expressions through macros is a little
+overkill for the problem you're trying to solve, but you still need some
+more advanced magic than just regular functions; enter *staged functions*.
+Staged functions have the capability to generate specialized code depending
+on the *types* of the arguments you give them, so that you can optimize or
+generalize your code in ways that aren't possible with ordinary functions.
+
+The power lies in this: From the callers perspective, they are very similar
+to regular functions; in fact, you don't have to know if you're calling a
+``function`` or a ``stagedfunction`` - the syntax and result of the call is
+just the same.
+
+When defining staged functions, however, there are three main differences to
+ordinary functions:
+
+1. You use the keyword ``stagedfunction`` instead of ``function``
+
+2. In the body of the ``stagedfunction`` you only have access to the *types*
+   of the arguments, not their values.
+
+3. Instead of calculating something or performing some action, you return
+   from the staged function a *quoted expression* which, when evaluated,
+   does what you want.
+
+It's easiest to illustrate this with an example. We can declare a staged function
+``foo`` as
+
+...doctest::
+
+    julia> stagedfunction foo(x)
+               println(x)
+               :(x*x)
+           end
+    foo (generic function with 1 method)
+
+Note that the body returns a quoted expression, namely ``x*x``. Let's see how
+``foo`` behaves:
+
+...doctest::
+
+    julia> x = foo(2); # note: not printing the result
+    Int64              # this is the println() statement in the body
+    julia> x           # now we print x
+    4
+
+    julia> y = foo("bar");
+    ASCIIString
+    julia> y
+    "barbar"
+
+So, we see that in the body of the ``stagedfunction``, ``x`` is the *type* of the
+passed argument, and the value returned by the ``stagedfunction``, is the result
+of evaluating the quoted expression we returned from the definition, now with the
+*value* of ``x``.
+
+What happens if we evaluate ``foo`` again, with a type that we have already used?
+
+...doctest::
+
+    julia> foo(4)
+    16
+
+Note that there is no printout of ``Int64``. The body of the ``stagedfunction`` is
+only executed *once*, when the method for that specific set of argument types is
+compiled. After that, the expression returned from the ``stagedfunction`` on the
+first invocation is re-used as the method body.
+
+We can utilize this to do slightly weirder things:
+
+...doctest::
+
+   julia> stagedfunction bar(x)
+              if x <: Integer
+                  return :(x^2)
+              else
+                  return :(x)
+              end
+          end
+    bar (generic function with 1 method)
+
+    julia> bar(4)
+    16
+    julia> bar("baz")
+    "baz"
+
+These examples are perhaps not so interesting, they have hopefully helped illustrating
+how staged functions work, both in the definition end and at the call site.
+
+Next, let's build some more advanced functionality using staged functions...
+
+An advanced example
+~~~~~~~~~~~~~~~~~~~
+
+To be continued...
+
+Suggestions on what to use as an example are more than welcome!
