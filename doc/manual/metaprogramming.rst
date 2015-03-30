@@ -875,32 +875,32 @@ your program's syntax tree.
 Staged functions
 ----------------
 
-Sometimes, generating or manipulating expressions through macros is a little
-overkill for the problem you're trying to solve, but you still need some
-more advanced magic than just regular functions; enter *staged functions*.
-Staged functions have the capability to generate specialized code depending
-on the *types* of the arguments you give them, so that you can optimize or
-generalize your code in ways that aren't possible with ordinary functions.
+*Staged functions* play a similar role as macros, but at a later stage
+between parsing and run-time. Staged functions give the capability to
+generate specialized code depending on the types of their arguments.
+While macros work with expressions at parsing-time and cannot access the
+types of their inputs, a staged function gets expanded at a time when
+the types of the arguments are known, but the function is not yet compiled.
 
-The power lies in this: From the callers perspective, they are very similar
-to regular functions; in fact, you don't have to know if you're calling a
-``function`` or a ``stagedfunction`` - the syntax and result of the call is
-just the same.
+Depending on the types of the arguments, a staged function returns a quoted
+expression which then forms the function body of the specialized function.
+Thus, staged functions provide a flexible framework to move work from
+run-time to compile-time.
 
-When defining staged functions, however, there are three main differences to
+When defining staged functions, there are three main differences to
 ordinary functions:
 
 1. You use the keyword ``stagedfunction`` instead of ``function``
 
-2. In the body of the ``stagedfunction`` you only have access to the *types*
-   of the arguments, not their values.
+2. In the body of the ``stagedfunction`` you only have access to the
+   *types* of the arguments, not their values.
 
 3. Instead of calculating something or performing some action, you return
    from the staged function a *quoted expression* which, when evaluated,
    does what you want.
 
-It's easiest to illustrate this with an example. We can declare a staged function
-``foo`` as
+It's easiest to illustrate this with an example. We can declare a staged
+function ``foo`` as
 
 ...doctest::
 
@@ -910,8 +910,12 @@ It's easiest to illustrate this with an example. We can declare a staged functio
            end
     foo (generic function with 1 method)
 
-Note that the body returns a quoted expression, namely ``x*x``. Let's see how
-``foo`` behaves:
+Note that the body returns a quoted expression, namely ``x*x``.
+
+From the callers perspective, they are very similar to regular functions;
+in fact, you don't have to know if you're calling a ``function`` or a
+``stagedfunction`` - the syntax and result of the call is just the same.
+Let's see how ``foo`` behaves:
 
 ...doctest::
 
@@ -925,24 +929,29 @@ Note that the body returns a quoted expression, namely ``x*x``. Let's see how
     julia> y
     "barbar"
 
-So, we see that in the body of the ``stagedfunction``, ``x`` is the *type* of the
-passed argument, and the value returned by the ``stagedfunction``, is the result
-of evaluating the quoted expression we returned from the definition, now with the
-*value* of ``x``.
+So, we see that in the body of the ``stagedfunction``, ``x`` is the
+*type* of the passed argument, and the value returned by the ``stagedfunction``,
+is the result of evaluating the quoted expression we returned from the
+definition, now with the *value* of ``x``.
 
-What happens if we evaluate ``foo`` again, with a type that we have already used?
+What happens if we evaluate ``foo`` again with a type that we have already
+used?
 
 ...doctest::
 
     julia> foo(4)
     16
 
-Note that there is no printout of ``Int64``. The body of the ``stagedfunction`` is
-only executed *once*, when the method for that specific set of argument types is
-compiled. After that, the expression returned from the ``stagedfunction`` on the
-first invocation is re-used as the method body.
+Note that there is no printout of ``Int64``. The body of the ``stagedfunction``
+is only executed *once*, when the method for that specific set of argument
+types is compiled. After that, the expression returned from the
+``stagedfunction`` on the first invocation is re-used as the method body.
 
-We can utilize this to do slightly weirder things:
+The example staged function ``foo`` above did not do anything a normal
+function ``foo(x)=x*x`` could not do, except printing the the type on the
+first invocation. However, the power of a staged function lies in its
+ability to compute different quoted expression depending on the types
+passed to it:
 
 ...doctest::
 
@@ -960,10 +969,28 @@ We can utilize this to do slightly weirder things:
     julia> bar("baz")
     "baz"
 
-These examples are perhaps not so interesting, they have hopefully helped illustrating
-how staged functions work, both in the definition end and at the call site.
+We can, of course, abuse this to produce some interesting behavior:::
 
-Next, let's build some more advanced functionality using staged functions...
+   julia> stagedfunction baz(x)
+              if rand() < .9
+                  return :(x^2)
+              else
+                  return :("boo!")
+              end
+          end
+
+Since the body of the staged function is non-deterministic, its behavior
+is undefined; the expression returned on the *first* invocation will be
+used for *all* subsequent invocations with the same type. When we call
+the staged function with ``x`` of a new type, ``rand()`` will be called
+again to see which method body to use for the new type. In this case, for
+one *type* out of ten, ``baz(x)`` will return the string ``"boo!"``.
+In short: don't do this.
+
+While these examples are perhaps not so interesting, they have hopefully
+elped illustrating how staged functions work, both in the definition end
+and at the call site. Next, let's build some more advanced functionality
+using staged functions...
 
 An advanced example
 ~~~~~~~~~~~~~~~~~~~
