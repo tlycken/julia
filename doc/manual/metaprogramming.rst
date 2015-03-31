@@ -995,6 +995,26 @@ using staged functions...
 An advanced example
 ~~~~~~~~~~~~~~~~~~~
 
-To be continued...
+Julia's base library once had the following function to calculate a
+linear index into a multidimensional array, based on a set of multilinear
+indices:::
 
-Suggestions on what to use as an example are more than welcome!
+    function sub2ind(dims, I::Integer...)
+        ndims = length(dims)
+        index = Int(I[1])
+        stride = 1
+        for k=2:ndims
+            stride = stride * dims[k-1]
+            index += (Int(I[k])-1) * stride
+        end
+        return index
+    end
+
+The same thing can be done using recursion:::
+
+    sub2ind(dims::()) = 1
+    sub2ind(dims::(),i1::Integer, I::Integer...) =
+        i1==1 ? sub2ind(dims,I...) : throw(BoundsError())
+    sub2ind(dims::(Integer,Integer...), i1::Integer) = i1
+    sub2ind(dims::(Integer,Integer...), i1::Integer, I::Integer...) =
+        i1 + dims[1]*(sub2ind(tail(dims),I...)-1)
