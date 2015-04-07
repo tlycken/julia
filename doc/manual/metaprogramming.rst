@@ -902,7 +902,7 @@ ordinary functions:
 It's easiest to illustrate this with an example. We can declare a staged
 function ``foo`` as
 
-...doctest::
+.. doctest::
 
     julia> stagedfunction foo(x)
                println(x)
@@ -917,7 +917,7 @@ in fact, you don't have to know if you're calling a ``function`` or a
 ``stagedfunction`` - the syntax and result of the call is just the same.
 Let's see how ``foo`` behaves:
 
-...doctest::
+.. doctest::
 
     julia> x = foo(2); # note: not printing the result
     Int64              # this is the println() statement in the body
@@ -937,7 +937,7 @@ definition, now with the *value* of ``x``.
 What happens if we evaluate ``foo`` again with a type that we have already
 used?
 
-...doctest::
+.. doctest::
 
     julia> foo(4)
     16
@@ -953,7 +953,7 @@ first invocation. However, the power of a staged function lies in its
 ability to compute different quoted expression depending on the types
 passed to it:
 
-...doctest::
+.. doctest::
 
    julia> stagedfunction bar(x)
               if x <: Integer
@@ -969,7 +969,7 @@ passed to it:
     julia> bar("baz")
     "baz"
 
-We can, of course, abuse this to produce some interesting behavior:::
+We can, of course, abuse this to produce some interesting behavior::
 
    julia> stagedfunction baz(x)
               if rand() < .9
@@ -995,9 +995,11 @@ using staged functions...
 An advanced example
 ~~~~~~~~~~~~~~~~~~~
 
-Julia's base library once had the following function to calculate a
-linear index into a multidimensional array, based on a set of multilinear
-indices:::
+Julia's base library has a function `sub2ind` function to calculate a
+linear index into an n-dimensional array, based on a set of n multilinear
+indices - in other words, to calculate the index `i` that can be used to
+index into an array `A` using `A[i]`, instead of `A[x,y,z,...]`. One
+possible implementation is the following::
 
     function sub2ind(dims, I::Integer...)
         ndims = length(dims)
@@ -1010,7 +1012,7 @@ indices:::
         return index
     end
 
-The same thing can be done using recursion:::
+The same thing can be done using recursion::
 
     sub2ind(dims::()) = 1
     sub2ind(dims::(),i1::Integer, I::Integer...) =
@@ -1018,3 +1020,4 @@ The same thing can be done using recursion:::
     sub2ind(dims::(Integer,Integer...), i1::Integer) = i1
     sub2ind(dims::(Integer,Integer...), i1::Integer, I::Integer...) =
         i1 + dims[1]*(sub2ind(tail(dims),I...)-1)
+
